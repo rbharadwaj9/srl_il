@@ -1,15 +1,8 @@
 import abc
-from pathlib import Path
-from typing import Any, Callable, List, Optional, Sequence
-import h5py
-import numpy as np
+from typing import Optional, Sequence
 import torch
 import torch.utils
 from torch.utils.data import Dataset, Subset, Dataset
-import pathlib
-import struct
-import torch.nn.functional as F
-from glob import glob
 
 
 class TrajectoryDataset(Dataset, abc.ABC):
@@ -111,8 +104,8 @@ class SequenceDataset(Dataset):
         window_size: int,
         keys_traj: Sequence[tuple[str, str, Optional[int], Optional[int]]],
         keys_global: Sequence[str],
-        pad_before: False,
-        pad_after: True,
+        pad_before: int,
+        pad_after: int,
         pad_type: str = "zero",
     ):
         self._dataset = dataset

@@ -16,7 +16,8 @@ OmegaConf.register_new_resolver("eval", eval, replace=True)
 
 @hydra.main(
     version_base=None,
-    config_path=str(pathlib.Path(__file__).parent.parent.joinpath('srl_il','cfg'))
+    config_path=str(pathlib.Path(__file__).parent.parent.joinpath('srl_il','cfg')),
+    config_name="il_test1"
 )
 def main(cfg: OmegaConf):
     # resolve immediately so all the ${now:} resolvers
