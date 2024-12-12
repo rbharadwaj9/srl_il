@@ -18,7 +18,7 @@ pipeline:
 dataset_cfg:
   data:
     _target_: srl_il.dataset.test_dataset.test_train_robomimic
-    data_directory: data_12_02_2024/processed
+    data_directory: data/data_12_02_2024/processed
     test_fraction: 0.1
     val_fraction: 0.1
     window_size_train: 20
@@ -209,8 +209,6 @@ data_augmentation_cfg: # data augmetation is only used for the data loaded from 
       std: 0.01
 
 
-sim_env_cfg: {}
-  
 projection_visualizer_cfg: {}
 #   pose_key: 'qpos_hand'
 #   img_views: # (img_name, img_key, extrinsics_key, intrinsics_key)
@@ -222,3 +220,5 @@ hydra:
   output_subdir: ${output_dir}/hydra
   run:
     dir: .
+
+

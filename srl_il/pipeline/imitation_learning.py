@@ -20,7 +20,7 @@ import wandb
 import json
 
 
-class ImitationLearningPipeline(Pipeline, AlgoMixin, DatasetMixin, Lr_SchedulerMixin, WandbMixin, DataAugmentationMixin, NormalizationMixin, SimulationEnvMixin, ActionProjectorMixin):
+class ImitationLearningPipeline(Pipeline, AlgoMixin, DatasetMixin, Lr_SchedulerMixin, WandbMixin, DataAugmentationMixin, NormalizationMixin, ActionProjectorMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         assert isinstance(self.algo, Algo), "algo should be an instance of Algo"

@@ -181,7 +181,7 @@ class NormalizationMixin(AutoInit, cfgname_and_funcs=(("normalizer_cfg", "_init_
     """
     Normlization mixin class that all other normlization mixins subclass. 
     A normlization mixin set the normalizers of Algo
-    Supported normalizatio types:
+    Supported normalization types:
         - hardcode: hardcode the mean and std
         - dataset_stats: normalize the data to [0, 1], can have a quantile parameter 0~1
         - augmentor_stats: standardize the data to have mean 0 and std 1
