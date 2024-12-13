@@ -7,7 +7,7 @@ seed: 43
 debugrun: false
 wandb_cfg:
   project: biomimic
-  run_name: ${.project}_diffusion_olddata_${now:%Y%m%d-%H%M%S}
+  run_name: ${.project}_diffusion_sensor_big_cubes_${now:%Y%m%d-%H%M%S}
   tags: ["test", "act"]
   mode: "online"
 output_dir: runs/${wandb_cfg.run_name}
@@ -17,8 +17,8 @@ pipeline:
 
 dataset_cfg:
   data:
-    _target_: srl_il.dataset.dataset_no_segment_no_sensor.dataset_no_segment_no_sensor
-    data_directory: data/data_12_11_2024/
+    _target_: srl_il.dataset.dataset_no_segment.dataset_no_segment
+    data_directory: data/data_12_12_2024/
     test_fraction: 0.1
     val_fraction: 0.1
     window_size_train: 20
@@ -31,6 +31,11 @@ dataset_cfg:
               ['oakd_front_view_images', 'oakd_front_view/color', 0, 1],  
               ['oakd_side_view_images', 'oakd_side_view/color', 0, 1],  
               ['oakd_wrist_view_images', 'oakd_wrist_view/color', 0, 1],  
+              ['thumb_sensor', 'thumb_sensor_filtered', 0, 1],  
+              ['index_sensor', 'index_sensor_filtered', 0, 1],  
+              ['middle_sensor', 'middle_sensor_filtered', 0, 1],  
+              ['ring_sensor', 'ring_sensor_filtered', 0, 1],  
+              ['pinky_sensor', 'pinky_sensor_filtered', 0, 1],  
             ] 
     keys_global: [
       # 'oakd_front_view/extrinsics',
@@ -46,7 +51,7 @@ dataset_cfg:
     pad_type: 'near'
     random_seed: ${seed}
   batch_size: ${batch_size}
-  pin_memory: false
+  pin_memory: true
   num_workers: 2
 
 
@@ -58,8 +63,8 @@ algo_cfg:
       actions_franka: 7
       actions_hand: 16
     T_target: 20 # Chunk Size. Larger size => more training time. Since the sampling rate of the dataset is 20Hz, a target of 20 means the robot tries to predict 1 second ahead
-    network_is_causal: true # What does this do?
-    network_group_keys: ['qpos', 'oakd_front_view_images', 'oakd_side_view_images', 'oakd_wrist_view_images']
+    network_is_causal: false
+    network_group_keys: ['qpos', 'oakd_front_view_images', 'oakd_side_view_images', 'oakd_wrist_view_images', 'sensors']
     network_cfg:
       d_model: 256
       nhead: 8
@@ -101,13 +106,20 @@ algo_cfg:
           input_dim_total: 23 # 7 + 16
         posemb_cfg:
           type: none
+      sensors:
+        datakeys: ['thumb_sensor', 'index_sensor', 'middle_sensor', 'ring_sensor', 'pinky_sensor']
+        encoder_cfg:
+          type: lowdim_concat
+          input_dim_total: 5 # 1 for each sensor
+        posemb_cfg:
+          type: none # Will this possibly be helpful? This may help give a spatial understanding on which sensor has fired up... The thing is that the linear encoder already does this however. Thus, start with none.
       oakd_front_view_images:
         datakeys: ['oakd_front_view_images']
         encoder_cfg:
           type: crop_resnet18
           resize_shape: [224, 224]
           crop_shape: null
-          pretrained: false
+          pretrained: false # Paper uses false
         posemb_cfg:
           type: none
       oakd_side_view_images:
@@ -116,7 +128,7 @@ algo_cfg:
           type:  crop_resnet18
           resize_shape: [224, 224]
           crop_shape: null
-          pretrained: false
+          pretrained: false # Paper uses false
         posemb_cfg:
           type: none
       oakd_wrist_view_images:
@@ -125,7 +137,7 @@ algo_cfg:
           type:  crop_resnet18
           resize_shape: [224, 224] # Should we potentially downsample here?
           crop_shape: null
-          pretrained: false
+          pretrained: false # Paper uses false
         posemb_cfg:
           type: none # position embeddings we may want to give?
     group_emb_cfg:
@@ -144,6 +156,11 @@ algo_cfg:
       - ['oakd_front_view_images', 2]
       - ['oakd_side_view_images', 2]
       - ['oakd_wrist_view_images', 2]
+      - ['thumb_sensor', 2]
+      - ['index_sensor', 2]
+      - ['middle_sensor', 2]
+      - ['ring_sensor', 2]
+      - ['pinky_sensor', 2]
 
 
 lr_scheduler_cfg:
@@ -203,13 +220,48 @@ normalizer_cfg:
     type: hardcode
     mean: [[[0.485]], [[0.456]], [[0.406]]]
     std: [[[0.229]], [[0.224]], [[0.225]]]
+  thumb_sensor:
+    type: dataset_stats
+    dataname: thumb_sensor_filtered
+  index_sensor:
+    type: dataset_stats
+    dataname: index_sensor_filtered
+  middle_sensor:
+    type: dataset_stats
+    dataname: middle_sensor_filtered
+  ring_sensor:
+    type: dataset_stats
+    dataname: ring_sensor_filtered
+  pinky_sensor:
+    type: dataset_stats
+    dataname: pinky_sensor_filtered
 
 data_augmentation_cfg: # data augmetation is only used for the data loaded from dataset, no simulation data augmentation
   data_augments:
     - outname: qpos_hand
       type: gaussian_noise
       mean: 0.0
-      std: 0.05
+      std: 0.01
+    - outname: thumb_sensor
+      type: gaussian_noise
+      mean: 0.0
+      std: 0.1
+    - outname: index_sensor
+      type: gaussian_noise
+      mean: 0.0
+      std: 0.1
+    - outname: middle_sensor
+      type: gaussian_noise
+      mean: 0.0
+      std: 0.1
+    - outname: ring_sensor
+      type: gaussian_noise
+      mean: 0.0
+      std: 0.1
+    - outname: pinky_sensor
+      type: gaussian_noise
+      mean: 0.0
+      std: 0.1
 
 
 sim_env_cfg: {}
@@ -226,3 +278,4 @@ hydra:
   output_subdir: ${output_dir}/hydra
   run:
     dir: .
+

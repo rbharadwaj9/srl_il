@@ -146,11 +146,15 @@ class DataAugmentationMixin(AutoInit, cfgname_and_funcs=(("data_augmentation_cfg
                 **kwargs: the parameters of the augmentation
         """
         self.data_augmentor = DataAugmentation(data_augments)
+
+    def fix_dimensionality(self, batch):
+        return {key: val if len(val.shape) > 2 else val.reshape((-1, 1, 1)) for key, val in batch.items()}
     
     def data_augmentation_train(self, batch, mask_batch):
         """
         Augment the batch data
         """
+        batch = self.fix_dimensionality(batch)
         with self._timer.time("data_augmentation"):
             return self.data_augmentor.augment_train(batch, mask_batch)
     
@@ -158,5 +162,6 @@ class DataAugmentationMixin(AutoInit, cfgname_and_funcs=(("data_augmentation_cfg
         """
         Augment the batch data
         """
+        batch = self.fix_dimensionality(batch)
         with self._timer.time("data_augmentation"):
             return self.data_augmentor.augment_eval(batch, mask_batch)

@@ -224,7 +224,8 @@ class ObsEncoder:
         posembs = []
         res_masks = []
         for gidx, gn in enumerate(group_names):
-            res = self.nets[f'{gn}_proj'](*[obs_batch[k] for k in self.obs_groups_cfg[gn]["datakeys"]])
+            encoder_input = [obs_batch[k] for k in self.obs_groups_cfg[gn]["datakeys"]]
+            res = self.nets[f'{gn}_proj'](*encoder_input)
             posemb = self.nets[f'{gn}_posemb'](res)
             if len(res.shape) > 3: 
                 token_per_step =  functools.reduce(lambda x, y: x*y, res.shape[2 : -1]) 

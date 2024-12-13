@@ -187,9 +187,6 @@ class DiffusionPolicyTrainer(Diffusion, TrainerMixin, PolicyMixin):
             raise ValueError(f"Unknown prediction type {pred_type}")
 
         loss_dict = dict()
-        # all_l1 = F.l1_loss(pred, gt, reduction='none')
-        # l1 = (all_l1 * mask.unsqueeze(-1)).mean()
-        # loss_dict['loss_l1'] = l1
         all_l2 = F.mse_loss(pred, gt, reduction='none')
         l2 = (all_l2 * target_mask.unsqueeze(-1)).mean()
         loss_dict['loss_l2'] = l2
