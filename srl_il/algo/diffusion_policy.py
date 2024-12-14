@@ -163,7 +163,7 @@ class DiffusionPolicyTrainer(Diffusion, TrainerMixin, PolicyMixin):
             target_mask = target_mask * mask_batch[key]
 
         bs = target_mask.shape[0]
-        # concatenae and normalize the target
+        # concatenate and normalize the target
         target = torch.zeros((bs, self.T_target, self.targets_idx_mapping[-1]), device=self.device)
         for i, (key, dim) in enumerate(self.target_dims.items()):
             target[:, :, self.targets_idx_mapping[i]:self.targets_idx_mapping[i+1]] = self._normalizers[key].normalize(batch[key]) 

@@ -2,7 +2,7 @@ defaults:
   # presets do not directly configs the pipeline or the algothm. However it provides necessary information to resolve this config
   - _self_
 
-batch_size: 64 # Larger batch size meaning that we are updating the model with more data. This is always good but the tradeoff is training time
+batch_size: 128 # Larger batch size meaning that we are updating the model with more data. This is always good but the tradeoff is training time
 seed: 43
 debugrun: false
 wandb_cfg:
@@ -184,7 +184,7 @@ training_cfg:
   num_epochs: 200 
   num_steps_per_epoch: 100
   num_eval_steps_per_epoch: 10
-  steps_saving: 5
+  steps_saving: 10
   rollout:
     enabled: false
 
@@ -221,47 +221,58 @@ normalizer_cfg:
     mean: [[[0.485]], [[0.456]], [[0.406]]]
     std: [[[0.229]], [[0.224]], [[0.225]]]
   thumb_sensor:
-    type: dataset_stats
-    dataname: thumb_sensor_filtered
+    type: hardcode
+    # This removes normalization
+    mean: [0.0]
+    std: [1.0]
   index_sensor:
-    type: dataset_stats
-    dataname: index_sensor_filtered
+    type: hardcode
+    # This removes normalization
+    mean: [0.0]
+    std: [1.0]
   middle_sensor:
-    type: dataset_stats
-    dataname: middle_sensor_filtered
+    type: hardcode
+    # This removes normalization
+    mean: [0.0]
+    std: [1.0]
   ring_sensor:
-    type: dataset_stats
-    dataname: ring_sensor_filtered
+    type: hardcode
+    # This removes normalization
+    mean: [0.0]
+    std: [1.0]
   pinky_sensor:
-    type: dataset_stats
-    dataname: pinky_sensor_filtered
+    type: hardcode
+    # This removes normalization
+    mean: [0.0]
+    std: [1.0]
 
 data_augmentation_cfg: # data augmetation is only used for the data loaded from dataset, no simulation data augmentation
+  # Based on analysis, the noise in the sensor data was too high since the ranges are only from 0 to 0.2. It's also already set to be in between 0 and 1 so we don't need to normalize
   data_augments:
     - outname: qpos_hand
       type: gaussian_noise
       mean: 0.0
-      std: 0.01
+      std: 0.1
     - outname: thumb_sensor
       type: gaussian_noise
       mean: 0.0
-      std: 0.1
+      std: 0.01
     - outname: index_sensor
       type: gaussian_noise
       mean: 0.0
-      std: 0.1
+      std: 0.01
     - outname: middle_sensor
       type: gaussian_noise
       mean: 0.0
-      std: 0.1
+      std: 0.01
     - outname: ring_sensor
       type: gaussian_noise
       mean: 0.0
-      std: 0.1
+      std: 0.01
     - outname: pinky_sensor
       type: gaussian_noise
       mean: 0.0
-      std: 0.1
+      std: 0.01
 
 
 sim_env_cfg: {}

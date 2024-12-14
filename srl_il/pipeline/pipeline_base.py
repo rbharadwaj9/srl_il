@@ -185,6 +185,7 @@ class NormalizationMixin(AutoInit, cfgname_and_funcs=(("normalizer_cfg", "_init_
         - hardcode: hardcode the mean and std
         - dataset_stats: normalize the data to [0, 1], can have a quantile parameter 0~1
         - augmentor_stats: standardize the data to have mean 0 and std 1
+        - none: no normalization applied
     """
     
     def _hardcode_normalizer(self, type, mean=0.0, std=1.0, **kwargs):
@@ -303,7 +304,7 @@ class NormalizationMixin(AutoInit, cfgname_and_funcs=(("normalizer_cfg", "_init_
                 mean, std = self._post_augmentor_stats_normalizer(k, **v)
             else:
                 raise NotImplementedError(f"Normalization type {v['type']} is not implemented")
-            if (std< 1e-3).any():
+            if (std < 1e-3).any():
                 print(f"Warning: std is too small for {k}, set to 1e-3")
                 std = torch.where(std < 1e-3, torch.tensor(1e-3), std)
             self.algo._normalizers[k] = LinearNormalizer(mean, std)

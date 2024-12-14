@@ -69,9 +69,6 @@ class ImitationLearningPipeline(Pipeline, AlgoMixin, DatasetMixin, Lr_SchedulerM
         for k, v in self._lr_schedulers.items():
             v.load_state_dict(checkpoint['lr_schedulers'][k])
 
-    def fix_input_dimensionality(self, input):
-        return input
-
 
     def run(self):
         """This function is the main training function
@@ -99,7 +96,6 @@ class ImitationLearningPipeline(Pipeline, AlgoMixin, DatasetMixin, Lr_SchedulerM
                             train_loader_iter = iter(self.train_loader)
                             inputs = next(train_loader_iter)
                     
-                    inputs = self.fix_input_dimensionality(inputs)
                     batch, mask_batch = inputs
 
                     batch, mask_batch = self.data_augmentation_train(batch, mask_batch)
