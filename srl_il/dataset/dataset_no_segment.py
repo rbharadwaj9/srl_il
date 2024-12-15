@@ -28,8 +28,9 @@ class DatasetNoSegment(TrajectoryDataset):
 
         # Iterate over all the files to find that keys in all files
         base_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
-        print(base_dir)
-        files = glob(f'{base_dir}/{data_directory}/**/*.h5', recursive=True)
+        path = f'{base_dir}/{data_directory}/**/*.h5'
+        print(path)
+        files = glob(path, recursive=True)
         if len(files) == 0:
             raise Exception("No Files Found For Dataset")
         print(f"Found {len(files)} H5 files")
