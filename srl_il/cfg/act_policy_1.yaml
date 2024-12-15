@@ -2,13 +2,13 @@ defaults:
   # presets do not directly configs the pipeline or the algothm. However it provides necessary information to resolve this config
   - _self_
 
-batch_size: 64 # Larger batch size meaning that we are updating the model with more data. This is always good but the tradeoff is training time
+batch_size: 128 # Larger batch size meaning that we are updating the model with more data. This is always good but the tradeoff is training time
 seed: 43
 debugrun: false
 wandb_cfg:
   project: biomimic
-  run_name: ${now:%Y%m%d-%H%M%S}_act_${.project}
-  tags: ["test", "act"]
+  run_name: act_1_big_cubes_srl_machine_${now:%Y%m%d-%H%M%S}
+  tags: ["act", "big_cubes"]
   mode: "online"
 output_dir: runs/${wandb_cfg.run_name}
 
@@ -18,7 +18,7 @@ pipeline:
 dataset_cfg:
   data:
     _target_: srl_il.dataset.dataset_no_segment_no_sensor.dataset_no_segment_no_sensor
-    data_directory: data/data_12_11_2024/
+    data_directory: data/data_12_12_2024/
     test_fraction: 0.1
     val_fraction: 0.1
     window_size_train: 20
@@ -47,7 +47,7 @@ dataset_cfg:
     random_seed: ${seed}
   batch_size: ${batch_size}
   pin_memory: false
-  num_workers: 2
+  num_workers: 4
 
 
 algo_cfg:
@@ -181,7 +181,7 @@ training_cfg:
   num_epochs: 200 
   num_steps_per_epoch: 100
   num_eval_steps_per_epoch: 10
-  steps_saving: 5
+  steps_saving: 10
   rollout:
     enabled: false
 

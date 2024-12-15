@@ -27,61 +27,74 @@ class DatasetNoSegmentNoSensor(TrajectoryDataset):
         # sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
 
         # Iterate over all the files to find that keys in all files
-        files = glob(f'{data_directory}/**/*.h5', recursive=True)
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
+        path = f'{base_dir}/{data_directory}/**/*.h5'
+        print(path)
+        files = glob(path, recursive=True)
+        if len(files) == 0:
+            raise Exception("No Files Found For Dataset")
+        print(f"Found {len(files)} H5 files")
+        corrupt_file_ct = 0
         if len(files) == 0:
             raise Exception("No Files Found For Dataset")
         print(f"Found {len(files)} H5 files")
         for f in files:
             print(f"H5 File {f}")
-            with h5py.File(f, "r", swmr=True, libver='latest') as h5_file:
-                # check what datasets are there in this file
-                try:
-                    traj_data = {
-                        key: (h5_file[key], f, h5_file[key].name) for key in ["actions_hand", "actions_franka"] if key in h5_file
-                    }
-                    # encode the task description
-                    global_data = {
-                        # key: sentence_model.encode([h5_file[key][()]])  for key in ["task_description"] if key in h5_file
-                    }
+            try:
+                with h5py.File(f, "r", swmr=True, libver='latest') as h5_file:
+                    # check what datasets are there in this file
+                    try:
+                        traj_data = {
+                            key: (h5_file[key], f, h5_file[key].name) for key in ["actions_hand", "actions_franka"] if key in h5_file
+                        }
+                        # encode the task description
+                        global_data = {
+                            # key: sentence_model.encode([h5_file[key][()]])  for key in ["task_description"] if key in h5_file
+                        }
 
-                    obs_group = h5_file["observations"]
-                    traj_data.update({
-                        key:  (obs_group[key], f, obs_group[key].name) for key in obs_group if key != "images"
-                    })
-                    for img_name, img_data in obs_group.get("images", {}).items():
-                        traj_data[f"{img_name}/color"] = (img_data["color"], f, img_data["color"].name)
-                        if "extrinsics" in img_data:
-                            global_data[f"{img_name}/extrinsics"] = (img_data["extrinsics"], f, img_data["extrinsics"].name)
-                        if "intrinsics" in img_data:
-                            global_data[f"{img_name}/intrinsics"] = (img_data["intrinsics"], f, img_data["intrinsics"].name)
-                        if "projection" in img_data:
-                            global_data[f"{img_name}/projection"] = (img_data["projection"], f, img_data["projection"].name)
-                except Exception as e:
-                    print(f"Warning: skipping {f}")
-                    print(e)
-                    continue
-            
-                self.seqlengths.append(len(list(traj_data.values())[0][0]))
-                # populate self.traj_data, it's either cached data or a file path and dataset path
-                if self.traj_data is None:
-                    self.traj_data = {key: [self._write_cache_or_not(data)]
-                        for key, data in traj_data.items()}
-                    self.global_data = {key: [self._write_cache_or_not(data)]
-                        for key, data in global_data.items()}
+                        obs_group = h5_file["observations"]
+                        traj_data.update({
+                            key:  (obs_group[key], f, obs_group[key].name) for key in obs_group if key != "images"
+                        })
+                        for img_name, img_data in obs_group.get("images", {}).items():
+                            traj_data[f"{img_name}/color"] = (img_data["color"], f, img_data["color"].name)
+                            if "extrinsics" in img_data:
+                                global_data[f"{img_name}/extrinsics"] = (img_data["extrinsics"], f, img_data["extrinsics"].name)
+                            if "intrinsics" in img_data:
+                                global_data[f"{img_name}/intrinsics"] = (img_data["intrinsics"], f, img_data["intrinsics"].name)
+                            if "projection" in img_data:
+                                global_data[f"{img_name}/projection"] = (img_data["projection"], f, img_data["projection"].name)
+                    except Exception as e:
+                        print(f"Warning: skipping {f}")
+                        print(e)
+                        continue
+                
+                    self.seqlengths.append(len(list(traj_data.values())[0][0]))
+                    # populate self.traj_data, it's either cached data or a file path and dataset path
+                    if self.traj_data is None:
+                        self.traj_data = {key: [self._write_cache_or_not(data)]
+                            for key, data in traj_data.items()}
+                        self.global_data = {key: [self._write_cache_or_not(data)]
+                            for key, data in global_data.items()}
 
-                else: # find the intersection of keys
-                    for key in list(self.traj_data.keys()):
-                        if key in traj_data:
-                            self.traj_data[key].append(self._write_cache_or_not(traj_data[key]))
-                        else:
-                            self.traj_data.pop(key)
-                            print(f"Warning: key {key} not found in {f}")
-                    for key in list(self.global_data.keys()):
-                        if key in global_data:
-                            self.global_data[key].append(self._write_cache_or_not(global_data[key]))
-                        else:
-                            self.global_data.pop(key)
-                            print(f"Warning: key {key} not found in {f}")
+                    else: # find the intersection of keys
+                        for key in list(self.traj_data.keys()):
+                            if key in traj_data:
+                                self.traj_data[key].append(self._write_cache_or_not(traj_data[key]))
+                            else:
+                                self.traj_data.pop(key)
+                                print(f"Warning: key {key} not found in {f}")
+                        for key in list(self.global_data.keys()):
+                            if key in global_data:
+                                self.global_data[key].append(self._write_cache_or_not(global_data[key]))
+                            else:
+                                self.global_data.pop(key)
+                                print(f"Warning: key {key} not found in {f}")
+            except OSError as e:
+                corrupt_file_ct += 1
+                print(f"File {f} may be corrupted. {e}")
+    
+        print(f"Total corrupted files: {corrupt_file_ct}")
     
     def _write_cache_or_not(self, data_and_name):
         data, file_name, data_name = data_and_name
@@ -155,6 +168,10 @@ class dataset_no_segment_no_sensor:
             pad_type = pad_type,
             random_seed = random_seed
         )
+        print(f"Sequence Data: {len(self.sequence_dataset)}")
+        print(f"Train Data: {len(self.train_data)}")
+        print(f"Val Data: {len(self.val_data)}")
+        print(f"Test Data: {len(self.test_data)}")
 
 if __name__ == "__main__":
     datadir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data/data_12_11_2024/"))
