@@ -122,9 +122,10 @@ class DatasetMixin(AutoInit, cfgname_and_funcs=(("dataset_cfg", "_init_dataset")
             test_data = torch.utils.data.Subset(test_data, range(len(test_data) // 10)) if test_data is not None else None
 
         if self.crop_start:
+            print(f"CROP PCT END HAS BEEN ADDED {self.crop_pct}, {self.crop_end_pct}")
             train_data = torch.utils.data.Subset(train_data, range(int(self.crop_pct * len(train_data)), int(self.crop_end_pct * len(train_data))))
-            val_data = torch.utils.data.Subset(val_data, range(int(self.crop_pct * len(val_data)), int(self.crop_end_pct * len(train_data))))
-            test_data = torch.utils.data.Subset(test_data, range(int(self.crop_pct * len(test_data)), int(self.crop_end_pct * len(train_data)))) if test_data is not None else None
+            val_data = torch.utils.data.Subset(val_data, range(int(self.crop_pct * len(val_data)), int(self.crop_end_pct * len(val_data))))
+            test_data = torch.utils.data.Subset(test_data, range(int(self.crop_pct * len(test_data)), int(self.crop_end_pct * len(test_data)))) if test_data is not None else None
 
         self.train_loader = torch.utils.data.DataLoader(
             train_data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory, num_workers=num_workers
