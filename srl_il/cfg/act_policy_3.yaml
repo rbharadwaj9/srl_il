@@ -5,12 +5,12 @@ defaults:
 batch_size: 110 # Larger batch size meaning that we are updating the model with more data. This is always good but the tradeoff is training time
 seed: 43
 debugrun: false
-crop_start: true
+crop_start: false
 crop_pct: 0.25
 crop_end_pct: 0.9
 wandb_cfg:
   project: biomimic
-  run_name: cropped_no_sensor_${now:%Y%m%d-%H%M%S}_act_${.project}
+  run_name: act_new_data_basically_unchanged_small_${now:%Y%m%d-%H%M%S}_act_${.project}
   tags: ["test", "act"]
   mode: "online"
 output_dir: runs/${wandb_cfg.run_name}
@@ -21,7 +21,7 @@ pipeline:
 dataset_cfg:
   data:
     _target_: srl_il.dataset.dataset_no_segment_no_sensor.dataset_no_segment_no_sensor
-    data_directory: data/data_12_13_combined/data_12_12_2024/
+    data_directory: data/low_processed/
     test_fraction: 0.1
     val_fraction: 0.1
     window_size_train: 20
@@ -50,8 +50,7 @@ dataset_cfg:
     random_seed: ${seed}
   batch_size: ${batch_size}
   pin_memory: true
-  num_workers: 1
-
+  num_workers: 2
 
 algo_cfg:
   _target_: srl_il.algo.act.ACTPolicyTrainer
