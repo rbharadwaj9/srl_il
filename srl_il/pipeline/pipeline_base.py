@@ -42,7 +42,16 @@ class Pipeline(AutoInit, cfgname_and_funcs=((None, "_init_workspace"),)):
         seed = cfg.get("seed", 0)
         output_dir = cfg.get("output_dir", None)
         debugrun = cfg.get("debugrun", False)
+
+        crop_start = cfg.get("crop_start", False)
+        crop_pct = cfg.get("crop_pct", 0.25)
+        crop_end_pct = cfg.get("crop_end_pct", 1)
+
         self.debugrun = debugrun
+        self.crop_start = crop_start
+        self.crop_pct = crop_pct
+        self.crop_end_pct = crop_end_pct
+
         self.resume = "resume_path" in cfg.keys()
         if self.resume:
             self.resume_path = cfg["resume_path"]
@@ -111,6 +120,12 @@ class DatasetMixin(AutoInit, cfgname_and_funcs=(("dataset_cfg", "_init_dataset")
             train_data = torch.utils.data.Subset(train_data, range(len(train_data) // 10))
             val_data = torch.utils.data.Subset(val_data, range(len(val_data) // 10))
             test_data = torch.utils.data.Subset(test_data, range(len(test_data) // 10)) if test_data is not None else None
+
+        if self.crop_start:
+            train_data = torch.utils.data.Subset(train_data, range(int(self.crop_pct * len(train_data)), int(self.crop_end_pct * len(train_data))))
+            val_data = torch.utils.data.Subset(val_data, range(int(self.crop_pct * len(val_data)), int(self.crop_end_pct * len(train_data))))
+            test_data = torch.utils.data.Subset(test_data, range(int(self.crop_pct * len(test_data)), int(self.crop_end_pct * len(train_data)))) if test_data is not None else None
+
         self.train_loader = torch.utils.data.DataLoader(
             train_data, batch_size=batch_size, shuffle=True, pin_memory=pin_memory, num_workers=num_workers
         )
