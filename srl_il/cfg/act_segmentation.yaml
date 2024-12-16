@@ -1,0 +1,257 @@
+defaults:
+  # presets do not directly configs the pipeline or the algothm. However it provides necessary information to resolve this config
+  - _self_
+
+batch_size: 128 # Larger batch size meaning that we are updating the model with more data. This is always good but the tradeoff is training time
+seed: 43
+debugrun: false
+wandb_cfg:
+  project: biomimic
+  run_name: act_segmentation_big_cubes_${now:%Y%m%d-%H%M%S}
+  tags: ["act", "big_cubes", "segmentation"]
+  mode: "online"
+output_dir: runs/${wandb_cfg.run_name}
+
+pipeline:
+  _target_: srl_il.pipeline.imitation_learning.ImitationLearningPipeline
+
+dataset_cfg:
+  data:
+    _target_: srl_il.dataset.dataset_no_segment_no_sensor.dataset_no_segment_no_sensor
+    data_directory: data/data_12_12_2024/
+    test_fraction: 0.1
+    val_fraction: 0.1
+    window_size_train: 20
+    window_size_test: 20
+    keys_traj:  [
+              ['actions_franka', 'actions_franka', 0, null],  # use the first frame as the observation
+              ['actions_hand', 'actions_hand', 0, null],  # use the first frame as the observation
+              ['qpos_franka', 'qpos_franka', 0, 1],  
+              ['qpos_hand', 'qpos_hand', 0, 1],  
+              ['oakd_front_view_images', 'oakd_front_view/color', 0, 1],  
+              ['oakd_side_view_images', 'oakd_side_view/color', 0, 1],  
+              ['oakd_wrist_view_images', 'oakd_wrist_view/color', 0, 1],  
+            ] 
+    keys_global: [
+      "tray_segmentation_mask"
+      # 'oakd_front_view/extrinsics',
+      # 'oakd_front_view/intrinsics',
+      # 'oakd_front_view/projection',
+      # 'oakd_side_view/extrinsics',
+      # 'oakd_side_view/intrinsics',
+      # 'oakd_side_view/projection',
+      # 'task_description'
+    ]
+    pad_before: false
+    pad_after: true
+    pad_type: 'near'
+    random_seed: ${seed}
+  batch_size: ${batch_size}
+  pin_memory: false
+  num_workers: 4
+
+
+algo_cfg:
+  _target_: srl_il.algo.act.ACTPolicyTrainer
+  algo_cfg:
+    device: cuda
+    target_dims: 
+      actions_franka: 7
+      actions_hand: 16
+    z_dim: 32
+    T_target: 20 # Chunk Size. Larger size => more training time.
+    T_z: 1 # This is called the style number z: https://radekosmulski.com/how-to-train-your-robot-with-a-transformer/
+    encoder_is_causal: false
+    decoder_is_causal: true
+    encoder_group_keys: ['qpos']
+    decoder_group_keys: ['qpos', 'oakd_front_view_images', 'oakd_side_view_images', 'oakd_wrist_view_images', "tray_segmentation_mask"]
+    encoder_cfg:
+      d_model: 256
+      nhead: 8
+      num_encoder_layers: 3
+      dim_feedforward: 1024
+      dropout: 0.1
+      activation: 'relu'
+    decoder_cfg:
+      d_model: 256
+      nhead: 8
+      num_encoder_layers: 3
+      dim_feedforward: 1024
+      dropout: 0.1
+      activation: 'relu'
+  trainer_cfg:
+    loss_params:
+      kl_weight: 10
+    optimizer_cfg:
+      act_encoder:
+        optm_cls: torch.optim.Adam
+        lr: 0.0001
+      act_decoder:
+        optm_cls: torch.optim.Adam
+        lr: 0.0001
+      obs_encoder:
+        optm_cls: torch.optim.Adam
+        lr: 0.0001
+      projs:
+        optm_cls: torch.optim.Adam
+        lr: 0.0001
+      embeds:
+        optm_cls: torch.optim.Adam
+        lr: 0.0001
+
+  obs_encoder_cfg:
+    output_dim: 256
+    obs_groups_cfg:
+      qpos:
+        datakeys: ['qpos_franka', 'qpos_hand'] # look into breaking down the qpos_franka into pos and quat?
+        encoder_cfg:
+          type: lowdim_concat
+          input_dim_total: 23 # 7 + 16
+        posemb_cfg:
+          type: none
+      oakd_front_view_images:
+        datakeys: ['oakd_front_view_images']
+        encoder_cfg:
+          type: crop_resnet18
+          resize_shape: [224, 224]
+          crop_shape: null
+          pretrained: true
+        posemb_cfg:
+          type: none
+      oakd_side_view_images:
+        datakeys: ['oakd_side_view_images']
+        encoder_cfg:
+          type:  crop_resnet18
+          resize_shape: [224, 224]
+          crop_shape: null
+          pretrained: true
+        posemb_cfg:
+          type: none
+      oakd_wrist_view_images:
+        datakeys: ['oakd_wrist_view_images']
+        encoder_cfg:
+          type:  crop_resnet18
+          resize_shape: [224, 224] # Should we potentially downsample here?
+          crop_shape: null
+          pretrained: true
+        posemb_cfg:
+          type: none # position embeddings we may want to give?
+      tray_segmentation_mask:
+        datakeys: ['tray_segmentation_mask']
+        encoder_cfg:
+          type:  crop_resnet18
+          resize_shape: [224, 224] # Should we potentially downsample here?
+          crop_shape: null
+          pretrained: true
+        posemb_cfg:
+          type: none # position embeddings we may want to give?
+    group_emb_cfg:
+      type: "whole_seq_sine" # none, whole_seq_sine, each_group_learned, whole_seq_learned # How is this different from posemb_cfg? Is it doing it together for all?
+
+  policy_cfg: 
+    policy_bs: 1 # Batch size of the policy. Makes sense since we only get one observation at a time based on which we need to infer..
+    policy_translator: null # directly return the dict # This is only if we need to change the control method to differ from the data collection method. Example, recording qpos but doing EEF pos control
+    policy_aggregator_cfg:
+      type: "temporal_aggr"
+      update_every: 1
+      k: 0.01
+    policy_obs_list: # policy names and temporal length
+      - ['qpos_franka', 1]
+      - ['qpos_hand', 1]
+      - ['oakd_front_view_images', 2]
+      - ['oakd_side_view_images', 2]
+      - ['oakd_wrist_view_images', 2]
+      - ['tray_segmentation_mask', 2]
+
+
+lr_scheduler_cfg:
+  act_encoder:
+    type: "diffusers"
+    name: cosine
+    params:
+      num_warmup_steps: 400
+      num_training_steps: 800000 # number per epoch * num_epochs
+    step_with_metrics: false
+  act_decoder:
+    type: "diffusers"
+    name: cosine
+    params:
+      num_warmup_steps: 400
+      num_training_steps: 800000 # number per epoch * num_epochs
+    step_with_metrics: false
+  obs_encoder:
+    type: "diffusers"
+    name: cosine
+    params:
+      num_warmup_steps: 2000
+      num_training_steps: 800000 # number per epoch * num_epochs
+    step_with_metrics: false
+
+training_cfg:
+  # Analyze the loss from wandb to figure out how much we need to change this. Idea: Start slow. Default provided is 500. We would like to ideally go slightly beyond the convergence since overfitting is good for us.
+  num_epochs: 200 
+  num_steps_per_epoch: 100
+  num_eval_steps_per_epoch: 10
+  steps_saving: 10
+  rollout:
+    enabled: false
+
+  visualization:
+    enabled: false
+    # num_samples: 5
+    # every_n_epoch: 10
+
+normalizer_cfg:
+  actions_franka: # the target to reconstruct
+    type: dataset_stats
+    min_max: true
+    dataname: actions_franka
+  actions_hand: # the target to reconstruct
+    type: dataset_stats
+    min_max: true
+    dataname: actions_hand
+  qpos_franka:
+    type: dataset_stats
+    dataname: qpos_franka
+  qpos_hand:
+    type: dataset_stats
+    dataname: qpos_hand
+  oakd_front_view_images: # image net norm mean = [0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    type: hardcode
+    mean: [[[0.485]], [[0.456]], [[0.406]]]
+    std: [[[0.229]], [[0.224]], [[0.225]]]
+  oakd_side_view_images: # image net norm mean = [0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    type: hardcode
+    mean: [[[0.485]], [[0.456]], [[0.406]]]
+    std: [[[0.229]], [[0.224]], [[0.225]]]
+  oakd_wrist_view_images: # image net norm mean = [0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    type: hardcode
+    mean: [[[0.485]], [[0.456]], [[0.406]]]
+    std: [[[0.229]], [[0.224]], [[0.225]]]
+  tray_segmentation_mask: # image net norm mean = [0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    type: hardcode
+    mean: [[[0.485]], [[0.456]], [[0.406]]]
+    std: [[[0.229]], [[0.224]], [[0.225]]]
+
+data_augmentation_cfg: # data augmetation is only used for the data loaded from dataset, no simulation data augmentation
+  data_augments:
+    - outname: qpos_hand
+      type: gaussian_noise
+      mean: 0.0
+      std: 0.01
+
+sim_env_cfg: {}
+  
+# No visualization for now. This is where the extrinsics of the camera come up so that we can update the trajectory in the visualizated camera images. This is for later.
+projection_visualizer_cfg: {}
+  # pose_key: 'actions_franka'
+  # img_views: # (img_name, img_key, extrinsics_key, intrinsics_key)
+  # - ["front", "oakd_front_view_images", "oakd_front_view/extrinsics", "oakd_front_view/intrinsics"]
+  # - ["side", "oakd_side_view_images", "oakd_side_view/extrinsics", "oakd_side_view/intrinsics"]
+ 
+# set the directory where the output files get saved
+hydra:
+  output_subdir: ${output_dir}/hydra
+  run:
+    dir: .
+
