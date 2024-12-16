@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from glob import glob
 import os
 
-class DatasetNotSegment(TrajectoryDataset):
+class DatasetSegment(TrajectoryDataset):
     """
     NOTE: this dataset implementation is ugly, but it is efficient.
     When working with multiple data workers, make sure these workers do not share the same file handles.
@@ -97,6 +97,20 @@ class DatasetNotSegment(TrajectoryDataset):
                 print(f"File {f} may be corrupted. {e}")
     
         print(f"Total corrupted files: {corrupt_file_ct}")
+
+        self.global_data["tray_mask"] = [np.stack((img, img, img), axis=0) for img in self.global_data["tray_mask"]]
+        self.traj_data["tray_mask"] = []
+
+        cnt = 0
+        for i in range(len(self.traj_data["actions_hand"])):
+            m = self.global_data["tray_mask"][i]
+            # I have a trajectory. Add this to observations:
+            full = [m] * self.traj_data["actions_hand"][cnt].shape[0]
+            self.traj_data["tray_mask"].append(full)
+            cnt += 1
+
+        self.global_data = {}
+
     
     def _write_cache_or_not(self, data_and_name):
         data, file_name, data_name = data_and_name
@@ -142,7 +156,7 @@ class DatasetNotSegment(TrajectoryDataset):
         return data
 
 
-class dataset_no_segment_no_sensor:
+class dataset_segment:
     def __init__(self,          
             data_directory,
             test_fraction,
@@ -156,7 +170,7 @@ class dataset_no_segment_no_sensor:
             pad_type,
             random_seed,
         ):
-        self.sequence_dataset = DatasetNoSegmentNoSensor(data_directory)
+        self.sequence_dataset = DatasetSegment(data_directory)
         self.train_data, self.val_data, self.test_data = get_train_val_test_seq_datasets(
             self.sequence_dataset,
             test_fraction = test_fraction,
@@ -176,9 +190,9 @@ class dataset_no_segment_no_sensor:
         print(f"Test Data: {len(self.test_data)}")
 
 if __name__ == "__main__":
-    datadir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data/data_12_11_2024/"))
+    datadir = "./data/low_big_cubes_processed_segmented/"
     print(datadir)
-    td = DatasetNoSegmentNoSensor(datadir)
+    td = DatasetSegment(datadir)
     print("Done")
 
 

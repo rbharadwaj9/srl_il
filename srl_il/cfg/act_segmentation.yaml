@@ -2,7 +2,7 @@ defaults:
   # presets do not directly configs the pipeline or the algothm. However it provides necessary information to resolve this config
   - _self_
 
-batch_size: 128 # Larger batch size meaning that we are updating the model with more data. This is always good but the tradeoff is training time
+batch_size: 64 # Larger batch size meaning that we are updating the model with more data. This is always good but the tradeoff is training time
 seed: 43
 debugrun: false
 wandb_cfg:
@@ -17,8 +17,8 @@ pipeline:
 
 dataset_cfg:
   data:
-    _target_: srl_il.dataset.dataset_no_segment_no_sensor.dataset_no_segment_no_sensor
-    data_directory: data/data_12_12_2024/
+    _target_: srl_il.dataset.dataset_segment.dataset_segment
+    data_directory: data/low_big_cubes_processed_segmented/
     test_fraction: 0.1
     val_fraction: 0.1
     window_size_train: 20
@@ -31,9 +31,9 @@ dataset_cfg:
               ['oakd_front_view_images', 'oakd_front_view/color', 0, 1],  
               ['oakd_side_view_images', 'oakd_side_view/color', 0, 1],  
               ['oakd_wrist_view_images', 'oakd_wrist_view/color', 0, 1],  
+              ['tray_mask', 'tray_mask', 0, 1],  
             ] 
     keys_global: [
-      "tray_segmentation_mask"
       # 'oakd_front_view/extrinsics',
       # 'oakd_front_view/intrinsics',
       # 'oakd_front_view/projection',
@@ -47,7 +47,7 @@ dataset_cfg:
     pad_type: 'near'
     random_seed: ${seed}
   batch_size: ${batch_size}
-  pin_memory: false
+  pin_memory: true
   num_workers: 4
 
 
@@ -64,7 +64,7 @@ algo_cfg:
     encoder_is_causal: false
     decoder_is_causal: true
     encoder_group_keys: ['qpos']
-    decoder_group_keys: ['qpos', 'oakd_front_view_images', 'oakd_side_view_images', 'oakd_wrist_view_images', "tray_segmentation_mask"]
+    decoder_group_keys: ['qpos', 'oakd_front_view_images', 'oakd_side_view_images', 'oakd_wrist_view_images', "tray_mask"]
     encoder_cfg:
       d_model: 256
       nhead: 8
@@ -136,8 +136,8 @@ algo_cfg:
           pretrained: true
         posemb_cfg:
           type: none # position embeddings we may want to give?
-      tray_segmentation_mask:
-        datakeys: ['tray_segmentation_mask']
+      tray_mask:
+        datakeys: ['tray_mask']
         encoder_cfg:
           type:  crop_resnet18
           resize_shape: [224, 224] # Should we potentially downsample here?
@@ -161,7 +161,7 @@ algo_cfg:
       - ['oakd_front_view_images', 2]
       - ['oakd_side_view_images', 2]
       - ['oakd_wrist_view_images', 2]
-      - ['tray_segmentation_mask', 2]
+      - ['tray_mask', 1]
 
 
 lr_scheduler_cfg:
@@ -228,7 +228,8 @@ normalizer_cfg:
     type: hardcode
     mean: [[[0.485]], [[0.456]], [[0.406]]]
     std: [[[0.229]], [[0.224]], [[0.225]]]
-  tray_segmentation_mask: # image net norm mean = [0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+  tray_mask: # image net norm mean = [0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     type: hardcode
     mean: [[[0.485]], [[0.456]], [[0.406]]]
     std: [[[0.229]], [[0.224]], [[0.225]]]

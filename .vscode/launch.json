@@ -70,7 +70,8 @@
                       "imitation_learning_faive_act",
                       "act_policy_1",
                       "diffusion_policy_1",
-                      "diffusion_policy_2"
+                      "diffusion_policy_2",
+                      "act_segmentation"
                      ],
           "default": "train_embed_vq_act"
         },
